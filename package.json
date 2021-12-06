@@ -1,0 +1,17 @@
+{
+  "name": "betparser",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "browser-sync": "^2.27.7",
+    "dayjs": "^1.10.7",
+    "node-telegram-bot-api": "0.54.0",
+    "puppeteer": "^11.0.0"
+  }
+}
