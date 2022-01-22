@@ -458,7 +458,7 @@ let football = async function (url, chatId) {
             if ((result.team1match1 == '0 : 0' && result.team2match1 == '0 : 0') && date1IsNorm && date2IsNorm) {
                 verdict = true;
             }
-            if (ochResult.ochmatch1result == '0 : 0' && ochResult.ochmatch2result) {
+            if (ochResult.ochmatch1result == '0 : 0' && ochResult.ochmatch2result == '0 : 0') {
                 verdict = true;
             }
             if (verdict && (time > 8)) {
