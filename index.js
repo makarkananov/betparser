@@ -2,7 +2,7 @@ const puppeteer = require('puppeteer');
 const dayjs = require('dayjs')
 const TelegramBot = require('node-telegram-bot-api');
 
-const token = '5245564797:AAEfHs7Q7qBypr6CR-tHZnsgWodscysfMsE';
+const token = '5196837221:AAGEvuQLxQ7u80VLSXBwO17c3NOavKuJ2mk';
 const bot = new TelegramBot(token, {
     polling: true
 });
