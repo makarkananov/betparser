@@ -2,12 +2,14 @@ const puppeteer = require('puppeteer');
 const dayjs = require('dayjs')
 const TelegramBot = require('node-telegram-bot-api');
 
-const token = '5196837221:AAGEvuQLxQ7u80VLSXBwO17c3NOavKuJ2mk';
+const token = '5245564797:AAEfHs7Q7qBypr6CR-tHZnsgWodscysfMsE';
 const bot = new TelegramBot(token, {
     polling: true
 });
+
 var relativeTime = require('dayjs/plugin/relativeTime')
 dayjs.extend(relativeTime)
+
 let category = 'no info'; //no-info football hockey
 let status = 'waiting'; //waiting starting working stopping
 let n;
@@ -24,98 +26,120 @@ const startingOpts = {
 };
 bot.on("polling_error", console.log);
 bot.on('message', (msg) => {
-    const chatId = msg.chat.id;
-    const categoryOpts = {
-        reply_markup: {
-            resize_keyboard: true,
-            one_time_keyboard: true,
-            keyboard: [
-                ['⚽ Football', '\ud83c\udfd2 Hockey'],
-            ]
+    (async function () {
+
+        //getting list of users
+        let users = [];
+        const {
+            GoogleSpreadsheet
+        } = require('google-spreadsheet');
+        const doc = new GoogleSpreadsheet('1GwYkzx-1TmmEudihMGrKMvAm-tRd6LfMrBp-tjfjZYs');
+        doc.useApiKey(process.env.GOOGLE_API_KEY = 'AIzaSyDzMqXKTWqZUg9iKYZyUnWJ2jbovmgvH_c');
+        await doc.loadInfo();
+        const sheet = doc.sheetsByIndex[0];
+        await sheet.loadCells();
+        let cellcnt = 0;
+        while (sheet.getCell(cellcnt, 0).value != null) {
+            users.push(sheet.getCell(cellcnt, 0).value);
+            cellcnt++;
         }
-    };
-    const workingOpts = {
-        reply_markup: {
-            resize_keyboard: true,
-            one_time_keyboard: true,
-            keyboard: [
-                ['⛔ Stop'],
-                ['❓ Status']
-            ]
+
+        //showing keyboard interface if user has access
+        const chatId = msg.chat.id;
+        if (users.includes(msg.from.username)) {
+            const categoryOpts = {
+                reply_markup: {
+                    resize_keyboard: true,
+                    one_time_keyboard: true,
+                    keyboard: [
+                        ['⚽ Football', '\ud83c\udfd2 Hockey'],
+                    ]
+                }
+            };
+            const workingOpts = {
+                reply_markup: {
+                    resize_keyboard: true,
+                    one_time_keyboard: true,
+                    keyboard: [
+                        ['⛔ Stop'],
+                        ['❓ Status']
+                    ]
+                }
+            };
+            const dateOpts = {
+                reply_markup: {
+                    resize_keyboard: true,
+                    one_time_keyboard: true,
+                    keyboard: [
+                        ['☑ Today'],
+                        ['▶ Tomorrow'],
+                        ['⏩ After tomorrow'],
+                        ['◀ Yesterday']
+                    ]
+                }
+            };
+            if (msg.text.includes('Start') || msg.text.includes('start')) {
+                bot.sendMessage(msg.chat.id, "Select category", categoryOpts);
+            }
+            if (msg.text.includes('Stop')) {
+                status = 'stopping';
+                bot.sendMessage(chatId, 'Stopped successfully', startingOpts);
+            }
+            if (msg.text.includes('Status')) {
+                if (totalMatches != 0) {
+                    bot.sendMessage(chatId, 'Now checking match ' + String(nowMatch) + '/' + String(totalMatches), workingOpts);
+                } else {
+                    bot.sendMessage(chatId, status, workingOpts);
+                }
+            }
+            if (msg.text.includes('Football')) {
+                category = 'football';
+                bot.sendMessage(msg.chat.id, "Choose day", dateOpts);
+            }
+            if (msg.text.includes('Hockey')) {
+                category = 'hockey';
+                bot.sendMessage(msg.chat.id, "Choose day", dateOpts);
+            }
+            if (msg.text.includes('Today')) {
+                n = 0;
+                status = 'starting';
+                bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
+            }
+            if (msg.text.includes('Tomorrow')) {
+                n = 1;
+                status = 'starting';
+                bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
+            }
+            if (msg.text.includes('After tomorrow')) {
+                n = 2;
+                status = 'starting';
+                bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
+            }
+            if (msg.text.includes('Yesterday')) {
+                n = -1;
+                status = 'starting';
+                bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
+            }
+            if (category == 'football' && status == 'starting') {
+                status = 'working';
+                url = 'https://soccer365.ru/online/&date=' + dayjs().add(Number(n), 'day').format('YYYY-MM-DD');
+                football(url, chatId)
+                nowMatch = 0;
+                totalMatches = 0;
+            } else if (category == 'hockey' && status == 'starting') {
+                status = 'working';
+                url = 'https://www.liveresult.ru/hockey/matches/' + dayjs().add(Number(n), 'day').format('YYYY-MM-DD');
+                hockey(url, chatId)
+                nowMatch = 0;
+                totalMatches = 0;
+            }
         }
-    };
-    const dateOpts = {
-        reply_markup: {
-            resize_keyboard: true,
-            one_time_keyboard: true,
-            keyboard: [
-                ['☑ Today'],
-                ['▶ Tomorrow'],
-                ['⏩ After tomorrow'],
-                ['◀ Yesterday']
-            ]
+        else{
+            bot.sendMessage(msg.chat.id, 'Access denied, sorry', startingOpts);
         }
-    };
-    if (msg.text.includes('start')) {
-        bot.sendMessage(msg.chat.id, `I'm test version of dogbet bot.
-Select category`, categoryOpts);
-    }
-    if (msg.text.includes('Start')) {
-        bot.sendMessage(msg.chat.id, "Select category", categoryOpts);
-    }
-    if (msg.text.includes('Stop')) {
-        status = 'stopping';
-        bot.sendMessage(chatId, 'Stopped successfully', startingOpts);
-    }
-    if (msg.text.includes('Status')) {
-        if (totalMatches != 0) {
-            bot.sendMessage(chatId, 'Now checking match ' + String(nowMatch) + '/' + String(totalMatches), workingOpts);
-        } else {
-            bot.sendMessage(chatId, status, workingOpts);
-        }
-    }
-    if (msg.text.includes('Football')) {
-        category = 'football';
-        bot.sendMessage(msg.chat.id, "Choose day", dateOpts);
-    }
-    if (msg.text.includes('Hockey')) {
-        category = 'hockey';
-        bot.sendMessage(msg.chat.id, "Choose day", dateOpts);
-    }
-    if (msg.text.includes('Today')) {
-        n = 0;
-        status = 'starting';
-        bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
-    }
-    if (msg.text.includes('Tomorrow')) {
-        n = 1;
-        status = 'starting';
-        bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
-    }
-    if (msg.text.includes('After tomorrow')) {
-        n = 2;
-        status = 'starting';
-        bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
-    }
-    if (msg.text.includes('Yesterday')) {
-        n = -1;
-        status = 'starting';
-        bot.sendMessage(msg.chat.id, "Searching...", workingOpts);
-    }
-    if (category == 'football' && status == 'starting') {
-        status = 'working';
-        url = 'https://soccer365.ru/online/&date=' + dayjs().add(Number(n), 'day').format('YYYY-MM-DD');
-        football(url, chatId)
-        nowMatch = 0;
-        totalMatches = 0;
-    } else if (category == 'hockey' && status == 'starting') {
-        status = 'working';
-        url = 'https://www.liveresult.ru/hockey/matches/' + dayjs().add(Number(n), 'day').format('YYYY-MM-DD');
-        hockey(url, chatId)
-        nowMatch = 0;
-        totalMatches = 0;
-    }
+    }());
 })
+
 
 let hockey = async function (url, chatId) {
     const browser = await puppeteer.launch({
@@ -159,27 +183,27 @@ let hockey = async function (url, chatId) {
         try {
             console.log(btn)
             await page.click(btn);
-        await page.waitForTimeout(2000);
-        matchName = await page.evaluate(() => {
-            let team1 = document.querySelector('div[itemprop="homeTeam"]').innerText;
-            let team2 = document.querySelector('div[itemprop="awayTeam"]').innerText;
-            let matchDate = document.querySelector('time.date').innerText;
-            let matchLeague = document.querySelector('.widget-title').innerText;
+            await page.waitForTimeout(2000);
+            matchName = await page.evaluate(() => {
+                let team1 = document.querySelector('div[itemprop="homeTeam"]').innerText;
+                let team2 = document.querySelector('div[itemprop="awayTeam"]').innerText;
+                let matchDate = document.querySelector('time.date').innerText;
+                let matchLeague = document.querySelector('li.breadcrumb-item.active').innerText;;
 
-            return {
-                team1: team1,
-                team2: team2,
-                matchDate: matchDate,
-                matchLeague: matchLeague
-            }
-        })
-        await page.click('.nav-link[data-target="#stats"]');
-        await page.waitForTimeout(1000);
-    } catch(e){
-        console.log(e);
-        kerror += 1;
-        await page.waitForTimeout(1000);
-    }
+                return {
+                    team1: team1,
+                    team2: team2,
+                    matchDate: matchDate,
+                    matchLeague: matchLeague
+                }
+            })
+            await page.click('.nav-link[data-target="#stats"]');
+            await page.waitForTimeout(1000);
+        } catch (e) {
+            console.log(e);
+            kerror += 1;
+            await page.waitForTimeout(1000);
+        }
 
         let result;
         let ochResult;
@@ -225,7 +249,7 @@ let hockey = async function (url, chatId) {
                     team2match2name,
                 }
             })
-        } catch(e){
+        } catch (e) {
             console.log(e);
             kerror += 1;
             await page.goto(url);
@@ -254,7 +278,7 @@ let hockey = async function (url, chatId) {
                     ochmatch2name,
                 }
             })
-        } catch(e) {
+        } catch (e) {
             ochResult = 'no-info';
             console.log(e);
             kerror += 1;
@@ -370,7 +394,7 @@ let hockey = async function (url, chatId) {
             console.log(matchName, result, ochResult)
             await page.goto(url);
             await page.waitForTimeout(1000);
-        } catch(e) {
+        } catch (e) {
             console.log(e)
             await page.goto(url);
             await page.waitForTimeout(1000);
@@ -406,7 +430,7 @@ let football = async function (url, chatId) {
     if (status == 'stopping') {
         return 0;
     }
-    bot.sendMessage(chatId, 'Всего матчей для проверки: ' + String(tar.length));
+    bot.sendMessage(chatId, 'Matches to check: ' + String(tar.length));
     totalMatches = tar.length;
     let k = 0;
     let kerror = 0;
